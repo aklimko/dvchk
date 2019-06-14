@@ -85,7 +85,7 @@ func main() {
 
 	config := ReadConfig()
 
-	apiClient := NewApiClient(5, config.InsecureTls)
+	apiClient := NewApiClient(5, config.Insecure)
 	v := NewVersionChecker(apiClient, containers, config)
 
 	v.CheckContainersTags()

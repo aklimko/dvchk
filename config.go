@@ -1,18 +1,19 @@
 package main
 
 import (
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	InsecureTls bool
+	Insecure bool
 }
 
 func ReadConfig() Config {
 	v := viper.New()
 
-	setupDefaults(v)
 	setupEnvVars(v)
+	setupFlags(v)
 
 	var cfg Config
 	err := v.Unmarshal(&cfg)
@@ -23,10 +24,17 @@ func ReadConfig() Config {
 	return cfg
 }
 
-func setupDefaults(v *viper.Viper) {
-	v.SetDefault("insecureTls", false)
-}
-
 func setupEnvVars(v *viper.Viper) {
 	v.AutomaticEnv()
+}
+
+func setupFlags(v *viper.Viper) {
+	pflag.BoolP("insecure", "k", false, "Disables TLS certificates validation")
+
+	pflag.Parse()
+
+	err := v.BindPFlags(pflag.CommandLine)
+	if err != nil {
+		panic(err)
+	}
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	InsecureTls bool
+	Insecure bool
 }
 
 func ReadConfig() Config {
@@ -29,7 +29,7 @@ func setupEnvVars(v *viper.Viper) {
 }
 
 func setupFlags(v *viper.Viper) {
-	pflag.BoolP("insecureTls", "k", false, "Disables TLS certificates validation")
+	pflag.BoolP("insecure", "k", false, "Disables TLS certificates validation")
 
 	pflag.Parse()
 

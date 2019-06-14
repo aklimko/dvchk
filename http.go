@@ -16,13 +16,12 @@ type ApiClient struct {
 	http *http.Client
 }
 
-func NewApiClient(timeoutSeconds int, insecure bool) *ApiClient {
-	httpClient := http.Client{Timeout: time.Duration(time.Duration(timeoutSeconds) * time.Second)}
-	if insecure {
-		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+func NewApiClient(config Config) *ApiClient {
+	httpClient := http.Client{
+		Timeout:   time.Duration(time.Duration(config.Timeout) * time.Second),
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: config.Insecure}},
 	}
+
 	return &ApiClient{http: &httpClient}
 }
 
@@ -31,14 +30,14 @@ func (ac ApiClient) GetV2(registry string) (*http.Response, error) {
 	return ac.http.Get(url)
 }
 
-func (ac ApiClient) GetTagList(i *Image) (*http.Response, error) {
-	tagsList := fmt.Sprintf(tagsListFormat, i.Registry, i.Creator, i.Name)
-	return ac.http.Get(tagsList)
+func (ac ApiClient) GetTagList(i Image) (*http.Response, error) {
+	tagsListUrl := createTagsListUrl(i)
+	return ac.http.Get(tagsListUrl)
 }
 
-func (ac ApiClient) GetTagListAuthenticated(i *Image, token string) (*http.Response, error) {
-	tagsList := fmt.Sprintf(tagsListFormat, i.Registry, i.Creator, i.Name)
-	request, err := http.NewRequest("GET", tagsList, nil)
+func (ac ApiClient) GetTagListAuthenticated(i Image, token string) (*http.Response, error) {
+	tagsListUrl := createTagsListUrl(i)
+	request, err := http.NewRequest("GET", tagsListUrl, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +63,10 @@ func (ac ApiClient) GetTokenWithCredentials(authUrl AuthUrl, cr Credentials) (*h
 	request.SetBasicAuth(cr.Username, cr.Password)
 
 	return ac.http.Do(request)
+}
+
+func createTagsListUrl(i Image) string {
+	return fmt.Sprintf(tagsListFormat, i.Registry, i.Author, i.Name)
 }
 
 func createTokenRequest(authUrl AuthUrl) (*http.Request, error) {

@@ -28,7 +28,7 @@ const (
 
 type ImageChoice struct {
 	image    *ImageAuthUrl
-	Checked  bool
+	Marked   bool
 	Position int
 }
 
@@ -37,40 +37,48 @@ type Credentials struct {
 	Password string
 }
 
+type Widgets struct {
+	list *widgets.List
+	tips *widgets.Paragraph
+}
+
 type Authorizer struct {
-	apiClient            *ApiClient
+	tagDownloader        TagDownloader
 	ic                   []*ImageChoice
-	list                 *widgets.List
-	tips                 *widgets.Paragraph
+	widgets              *Widgets
 	storage              *ImageStorage
 	unauthorizedToRemove []int
 }
 
-func NewAuthorizer(apiClient *ApiClient, storage *ImageStorage) *Authorizer {
-	return &Authorizer{apiClient: apiClient, storage: storage}
+func NewAuthorizer(tagDownloader TagDownloader, storage *ImageStorage) *Authorizer {
+	return &Authorizer{tagDownloader: tagDownloader, storage: storage}
 }
 
 func (a *Authorizer) Authorize() {
 	for a.authorizeContinuously() == statusContinue {
 	}
+
+	fmt.Println()
 }
 
 func (a *Authorizer) authorizeContinuously() Status {
-	if len(a.storage.unauthorized) == 0 {
+	if len(a.storage.Unauthorized) == 0 {
 		return statusFinish
 	}
 
 	a.unauthorizedToRemove = nil
 
-	if err := ui.Init(); err != nil {
+	err := ui.Init()
+	if err != nil {
 		fmt.Printf("Failed to initialize termui: %v\n", err)
 		return statusFinish
 	}
 
-	a.createImageChoices(a.storage.unauthorized)
-	a.createWidgets()
+	a.createImageChoices(a.storage.Unauthorized)
 
+	a.createWidgets()
 	a.renderWidgets()
+
 	result := a.handleKeyInput()
 	return result
 }
@@ -78,49 +86,53 @@ func (a *Authorizer) authorizeContinuously() Status {
 func (a *Authorizer) createImageChoices(images []*ImageAuthUrl) {
 	var ic []*ImageChoice
 	for i, img := range images {
-		ic = append(ic, &ImageChoice{image: img, Checked: false, Position: i})
+		ic = append(ic, &ImageChoice{image: img, Marked: false, Position: i})
 	}
 	a.ic = ic
 }
 
 func (a *Authorizer) createWidgets() {
+	a.widgets = &Widgets{}
+
 	a.createListWidget()
 	a.createTipsWidget()
 }
 
 func (a *Authorizer) createListWidget() {
-	a.list = widgets.NewList()
-	a.list.Title = "Unauthorized images"
-	a.list.TitleStyle = ui.NewStyle(ui.ColorRed, ui.ColorClear, ui.ModifierBold)
-	a.list.TextStyle = ui.NewStyle(ui.ColorYellow)
-	a.list.SelectedRowStyle = ui.NewStyle(ui.ColorBlue)
-	a.list.WrapText = false
+	a.widgets.list = widgets.NewList()
+	a.widgets.list.Title = "Unauthorized images"
+	a.widgets.list.TitleStyle = ui.NewStyle(ui.ColorRed, ui.ColorClear, ui.ModifierBold)
+	a.widgets.list.TextStyle = ui.NewStyle(ui.ColorYellow)
+	a.widgets.list.SelectedRowStyle = ui.NewStyle(ui.ColorBlue)
+	a.widgets.list.WrapText = false
 	a.fillListContent()
 
 	w, h := ui.TerminalDimensions()
-	a.list.SetRect(0, 0, w, h-5)
+	a.widgets.list.SetRect(0, 0, w, h-5)
 }
 
 func (a *Authorizer) fillListContent() {
 	var rows []string
 	for _, i := range a.ic {
-		rows = append(rows, unmarked+" "+i.image.FullName)
+		rowValue := fmt.Sprintf("%s %s", unmarked, i.image.LocalFullName)
+		rows = append(rows, rowValue)
 	}
-	a.list.Rows = rows
+
+	a.widgets.list.Rows = rows
 }
 
 func (a *Authorizer) createTipsWidget() {
-	a.tips = widgets.NewParagraph()
-	a.tips.Text = tips
-	a.tips.WrapText = true
-	a.tips.Border = false
+	a.widgets.tips = widgets.NewParagraph()
+	a.widgets.tips.Text = tips
+	a.widgets.tips.WrapText = true
+	a.widgets.tips.Border = false
 
 	w, h := ui.TerminalDimensions()
-	a.tips.SetRect(0, h-5, w, h)
+	a.widgets.tips.SetRect(0, h-5, w, h)
 }
 
 func (a *Authorizer) renderWidgets() {
-	ui.Render(a.list, a.tips)
+	ui.Render(a.widgets.list, a.widgets.tips)
 }
 
 func (a *Authorizer) handleKeyInput() Status {
@@ -132,9 +144,9 @@ func (a *Authorizer) handleKeyInput() Status {
 			ui.Close()
 			return statusFinish
 		case "<Up>":
-			a.list.ScrollUp()
+			a.widgets.list.ScrollUp()
 		case "<Down>":
-			a.list.ScrollDown()
+			a.widgets.list.ScrollDown()
 		case "<Enter>":
 			status := a.authenticateMarkedImages()
 			if status != statusIgnore {
@@ -149,9 +161,9 @@ func (a *Authorizer) handleKeyInput() Status {
 		case "<C-l>":
 			a.unmarkAllRows()
 		case "<Home>":
-			a.list.ScrollTop()
+			a.widgets.list.ScrollTop()
 		case "<End>":
-			a.list.ScrollBottom()
+			a.widgets.list.ScrollBottom()
 		}
 
 		a.renderWidgets()
@@ -159,15 +171,12 @@ func (a *Authorizer) handleKeyInput() Status {
 }
 
 func (a *Authorizer) authenticateMarkedImages() Status {
-	var mi []*ImageChoice
-	for _, img := range a.ic {
-		if img.Checked {
-			mi = append(mi, img)
-		}
-	}
-	if len(mi) == 0 {
+	markedImages := a.getMarkedImages()
+
+	if len(markedImages) == 0 {
 		return statusIgnore
 	}
+
 	ui.Close()
 
 	credentials, err := readCredentials()
@@ -175,45 +184,33 @@ func (a *Authorizer) authenticateMarkedImages() Status {
 		fmt.Println(err)
 		return statusFinish
 	}
-	a.getMarkedImageTagsAuthenticated(mi, credentials)
+
+	a.getMarkedImageTagsAuthenticated(markedImages, credentials)
 	a.removeImagesFromUnauthorized()
+
 	return statusContinue
 }
 
-func (a *Authorizer) getMarkedImageTagsAuthenticated(mi []*ImageChoice, credentials Credentials) {
-	for _, img := range mi {
-		a.getImageTagsAuthenticated(img, credentials)
+func (a *Authorizer) getMarkedImages() []*ImageChoice {
+	var markedImages []*ImageChoice
+	for _, image := range a.ic {
+		if image.Marked {
+			markedImages = append(markedImages, image)
+		}
 	}
+	return markedImages
 }
 
-func (a *Authorizer) getImageTagsAuthenticated(ic *ImageChoice, credentials Credentials) {
-	it := &ImageTags{}
-
-	withCredentials, err := a.apiClient.GetTokenWithCredentials(ic.image.AuthUrl, credentials)
-	if err != nil {
-		fmt.Printf("Token request failed for %s, error:%v\n", ic.image.FullName, err)
-		return
-	}
-	token, err := unmarshalToken(withCredentials)
-	if err != nil {
-		fmt.Printf("Failed to unmarshal token for %s, error:%v\n", ic.image.FullName, err)
-		return
-	}
-	resp, err := a.apiClient.GetTagListAuthenticated(&ic.image.Image, getAuthHeader(token.Token))
-	if err != nil {
-		fmt.Printf("Response failed for %s, error:%v\n", ic.image.FullName, err)
-	}
-	if resp.StatusCode == 200 {
-		it, err = unmarshalTags(resp)
+func (a *Authorizer) getMarkedImageTagsAuthenticated(markedImages []*ImageChoice, credentials Credentials) {
+	for _, image := range markedImages {
+		tags, err := a.tagDownloader.DownloadWithAuth(image.image, credentials)
 		if err != nil {
-			fmt.Printf("Failed to unmarshal tags for %s, error:%v\n", ic.image.FullName, err)
-			return
+			fmt.Println(err)
+			continue
 		}
-		a.storage.successful = append(a.storage.successful, &ImageContext{image: &ic.image.Image, imageTags: it})
-		a.unauthorizedToRemove = append(a.unauthorizedToRemove, ic.Position)
-		fmt.Printf("Tags for %s downloaded successfully\n", ic.image.FullName)
-	} else {
-		fmt.Printf("Failed authentication for %s\n", ic.image.FullName)
+
+		a.storage.addSuccessful(&ImageContext{Image: image.image.Image, Tags: tags})
+		a.unauthorizedToRemove = append(a.unauthorizedToRemove, image.Position)
 	}
 }
 
@@ -225,52 +222,55 @@ func (a *Authorizer) removeImagesFromUnauthorized() {
 }
 
 func (a *Authorizer) removeImageFromUnauthorized(i int) {
-	a.storage.unauthorized = append(a.storage.unauthorized[:i], a.storage.unauthorized[i+1:]...)
+	a.storage.Unauthorized = append(a.storage.Unauthorized[:i], a.storage.Unauthorized[i+1:]...)
 }
 
 func (a *Authorizer) toggleSelectedRowMark() {
-	sr := a.list.SelectedRow
-	a.ic[sr].Checked = !a.ic[sr].Checked
+	sr := a.widgets.list.SelectedRow
+
+	a.ic[sr].Marked = !a.ic[sr].Marked
 
 	var previous, current string
-	if a.ic[sr].Checked {
+	if a.ic[sr].Marked {
 		previous, current = unmarked, marked
 	} else {
 		previous, current = marked, unmarked
 	}
-	a.list.Rows[sr] = strings.Replace(a.list.Rows[sr], previous, current, 1)
+
+	a.widgets.list.Rows[sr] = strings.Replace(a.widgets.list.Rows[sr], previous, current, 1)
 }
 
 func (a Authorizer) resizeWidgetsOnTerminalResize() {
 	w, h := ui.TerminalDimensions()
-	a.list.SetRect(0, 0, w, h-5)
-	a.tips.SetRect(0, h-5, w, h)
+
+	a.widgets.list.SetRect(0, 0, w, h-5)
+	a.widgets.tips.SetRect(0, h-5, w, h)
 }
 
 func (a *Authorizer) markAllRows() {
 	for i, image := range a.ic {
-		if !image.Checked {
+		if !image.Marked {
 			a.markRow(i)
 		}
 	}
 }
 
 func (a *Authorizer) markRow(row int) {
-	a.ic[row].Checked = true
-	a.list.Rows[row] = strings.Replace(a.list.Rows[row], unmarked, marked, 1)
+	a.ic[row].Marked = true
+	a.widgets.list.Rows[row] = strings.Replace(a.widgets.list.Rows[row], unmarked, marked, 1)
 }
 
 func (a *Authorizer) unmarkAllRows() {
 	for i, image := range a.ic {
-		if image.Checked {
+		if image.Marked {
 			a.unmarkRow(i)
 		}
 	}
 }
 
 func (a *Authorizer) unmarkRow(row int) {
-	a.ic[row].Checked = false
-	a.list.Rows[row] = strings.Replace(a.list.Rows[row], marked, unmarked, 1)
+	a.ic[row].Marked = false
+	a.widgets.list.Rows[row] = strings.Replace(a.widgets.list.Rows[row], marked, unmarked, 1)
 }
 
 func readCredentials() (Credentials, error) {
@@ -281,7 +281,9 @@ func readCredentials() (Credentials, error) {
 	if username == "" {
 		return Credentials{}, nil
 	}
+
 	fmt.Print("Password: ")
 	password, err := gopass.GetPasswdMasked()
+
 	return Credentials{Username: username, Password: string(password)}, err
 }

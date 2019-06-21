@@ -7,6 +7,8 @@ import (
 
 type Config struct {
 	Insecure bool
+	Debug    bool
+	Timeout  int
 }
 
 func ReadConfig() Config {
@@ -29,7 +31,9 @@ func setupEnvVars(v *viper.Viper) {
 }
 
 func setupFlags(v *viper.Viper) {
-	pflag.BoolP("insecure", "k", false, "Disables TLS certificates validation")
+	pflag.BoolP("debug", "d", false, "Add debug logs")
+	pflag.BoolP("insecure", "k", false, "Disable TLS certificates validation")
+	pflag.IntP("timeout", "t", 5, "Set timeout for http requests in seconds")
 
 	pflag.Parse()
 

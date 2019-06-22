@@ -1,5 +1,5 @@
 # DVCHK
-[![Build Status](https://travis-ci.com/aklimko/dvchk.svg?branch=master)](https://travis-ci.org/aklimko/docker-version-checker)
+[![Build Status](https://travis-ci.com/aklimko/dvchk.svg?branch=master)](https://travis-ci.org/aklimko/dvchk)
 [![Docker Pulls](https://shields.beevelop.com/docker/pulls/aklimko/dvchk.svg)](https://hub.docker.com/r/aklimko/dvchk)
 
 DVCHK is a tool that checks if there are newer versions of images for your running containers based on semver versioning.

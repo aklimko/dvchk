@@ -42,8 +42,8 @@ func ValidateTagIsSemver(tag string) error {
 func CheckImagesForNewerVersions(storage *ImageStorage) ImagesNewerVersions {
 	var imagesNewerVersions []ImageNewerVersions
 
-	for _, ic := range storage.Successful {
-		imageNewerVersions, err := checkImageForNewerVersions(ic)
+	for _, imageTags := range storage.Successful {
+		imageNewerVersions, err := checkImageForNewerVersions(imageTags)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -54,17 +54,17 @@ func CheckImagesForNewerVersions(storage *ImageStorage) ImagesNewerVersions {
 	return ImagesNewerVersions{imagesNewerVersions}
 }
 
-func checkImageForNewerVersions(ic *ImageContext) (ImageNewerVersions, error) {
-	versions := createValidVersionsSortedAsc(ic.Tags)
+func checkImageForNewerVersions(imageTags *ImageTags) (ImageNewerVersions, error) {
+	versions := createValidVersionsSortedAsc(imageTags.Tags)
 
-	constraints, err := createConstraintGreaterThan(ic.Image.Tag)
+	constraints, err := createConstraintGreaterThan(imageTags.Image.Tag)
 	if err != nil {
 		return ImageNewerVersions{}, err
 	}
 
 	newerVersions := getNewerVersions(versions, constraints)
 
-	return ImageNewerVersions{imageName: ic.Image.LocalFullName, newerVersions: newerVersions}, nil
+	return ImageNewerVersions{imageName: imageTags.Image.LocalFullName, newerVersions: newerVersions}, nil
 }
 
 func createValidVersionsSortedAsc(tags []string) []*version.Version {

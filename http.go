@@ -27,20 +27,24 @@ func NewApiClient(config Config) *ApiClient {
 
 func (ac ApiClient) GetV2(registry string) (*http.Response, error) {
 	url := fmt.Sprintf(v2RegistryFormat, registry)
+
 	return ac.http.Get(url)
 }
 
 func (ac ApiClient) GetTagList(i Image) (*http.Response, error) {
 	tagsListUrl := createTagsListUrl(i)
+
 	return ac.http.Get(tagsListUrl)
 }
 
 func (ac ApiClient) GetTagListAuthenticated(i Image, token string) (*http.Response, error) {
 	tagsListUrl := createTagsListUrl(i)
+
 	request, err := http.NewRequest("GET", tagsListUrl, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	request.Header.Add("Authorization", token)
 
 	return ac.http.Do(request)
@@ -60,6 +64,7 @@ func (ac ApiClient) GetTokenWithCredentials(authUrl AuthUrl, cr Credentials) (*h
 	if err != nil {
 		return nil, err
 	}
+
 	request.SetBasicAuth(cr.Username, cr.Password)
 
 	return ac.http.Do(request)
@@ -74,6 +79,8 @@ func createTokenRequest(authUrl AuthUrl) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	request.URL.RawQuery = authUrl.Params.Encode()
+
 	return request, nil
 }

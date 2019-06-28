@@ -12,6 +12,21 @@ import (
 
 const defaultRegistry = "registry-1.docker.io"
 
+type ImageAuthUrl struct {
+	Image
+	AuthUrl
+}
+
+type AuthUrl struct {
+	Host   string
+	Params url.Values
+}
+
+type ImageTags struct {
+	Image Image
+	Tags  []string
+}
+
 type Image struct {
 	LocalFullName string
 
@@ -21,23 +36,8 @@ type Image struct {
 	Tag      string
 }
 
-type ImageAuthUrl struct {
-	Image
-	AuthUrl
-}
-
-type ImageContext struct {
-	Image Image
-	Tags  []string
-}
-
-type AuthUrl struct {
-	Host   string
-	Params url.Values
-}
-
 type ImageStorage struct {
-	Successful   []*ImageContext
+	Successful   []*ImageTags
 	Unauthorized []*ImageAuthUrl
 }
 
@@ -114,7 +114,7 @@ func (v *VersionChecker) checkContainerImageTags(container types.Container) {
 		return
 	}
 
-	data, status, err := v.tagDownloader.DownloadWithoutAuth(image)
+	status, tags, authUrl, err := v.tagDownloader.DownloadWithoutAuth(image)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -122,9 +122,9 @@ func (v *VersionChecker) checkContainerImageTags(container types.Container) {
 
 	switch status {
 	case StatusImgSuccessful:
-		v.storage.addSuccessful(&ImageContext{Image: image, Tags: data.([]string)})
+		v.storage.addSuccessful(&ImageTags{Image: image, Tags: tags})
 	case StatusImgUnauthorized:
-		v.storage.addUnauthorized(&ImageAuthUrl{Image: image, AuthUrl: data.(AuthUrl)})
+		v.storage.addUnauthorized(&ImageAuthUrl{Image: image, AuthUrl: authUrl})
 	}
 }
 
@@ -179,8 +179,8 @@ func splitNameAndTag(nameTag string) (name string, tag string, err error) {
 	return name, tag, nil
 }
 
-func (is *ImageStorage) addSuccessful(ic *ImageContext) {
-	is.Successful = append(is.Successful, ic)
+func (is *ImageStorage) addSuccessful(imageTags *ImageTags) {
+	is.Successful = append(is.Successful, imageTags)
 }
 
 func (is *ImageStorage) addUnauthorized(image *ImageAuthUrl) {

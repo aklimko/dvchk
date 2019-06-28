@@ -24,7 +24,7 @@ type Token struct {
 	IssuedAt    time.Time `json:"issued_at"`
 }
 
-type ImageTags struct {
+type ImageNameTags struct {
 	Name string   `json:"name"`
 	Tags []string `json:"tags"`
 }
@@ -41,12 +41,12 @@ func NewTagDownloader(apiClient *ApiClient) TagDownloader {
 	}
 }
 
-func (td TagDownloader) DownloadWithoutAuth(image Image) (interface{}, DownloadStatus, error) {
-	errorWrap := func(err error) (interface{}, DownloadStatus, error) {
-		return nil, -1, err
+func (td TagDownloader) DownloadWithoutAuth(image Image) (status DownloadStatus, tags []string, authUrl AuthUrl, err error) {
+	errorWrap := func(err error) (DownloadStatus, []string, AuthUrl, error) {
+		return -1, nil, AuthUrl{}, err
 	}
 
-	err := td.validateRegistry(image)
+	err = td.validateRegistry(image)
 	if err != nil {
 		return errorWrap(fmt.Errorf("Failed registry validation for %s, %v\n", image.Registry, err))
 	}
@@ -65,7 +65,7 @@ func (td TagDownloader) DownloadWithoutAuth(image Image) (interface{}, DownloadS
 			return errorWrap(fmt.Errorf("Failed to unmarshal tags for %s, %v\n", imageName, err))
 		}
 
-		return tags, StatusImgSuccessful, nil
+		return StatusImgSuccessful, tags, AuthUrl{}, nil
 	} else if statusCode == http.StatusUnauthorized {
 		authDetails := tagListResponse.Header.Get("Www-Authenticate")
 		authUrl, err := createAuthUrl(authDetails)
@@ -84,17 +84,17 @@ func (td TagDownloader) DownloadWithoutAuth(image Image) (interface{}, DownloadS
 		}
 
 		if tagsResponse.StatusCode == http.StatusUnauthorized {
-			return authUrl, StatusImgUnauthorized, nil
+			return StatusImgUnauthorized, nil, authUrl, nil
 		} else {
 			tags, err := unmarshalTags(tagsResponse)
 			if err != nil {
 				return errorWrap(fmt.Errorf("Failed to unmarshal tags for %s, %v\n", imageName, err))
 			}
 
-			return tags, StatusImgSuccessful, nil
+			return StatusImgSuccessful, tags, AuthUrl{}, nil
 		}
 	} else {
-		return nil, -1, fmt.Errorf("Unexpected status code %d for %s\n", statusCode, imageName)
+		return errorWrap(fmt.Errorf("Unexpected status code %d for %s\n", statusCode, imageName))
 	}
 }
 
@@ -200,9 +200,9 @@ func (td TagDownloader) getTagsResponseUsingTokenResponse(responseToken *http.Re
 }
 
 func unmarshalTags(response *http.Response) (tags []string, err error) {
-	var imageTags *ImageTags
-	err = json.NewDecoder(response.Body).Decode(&imageTags)
-	return imageTags.Tags, err
+	var imageWithTags *ImageNameTags
+	err = json.NewDecoder(response.Body).Decode(&imageWithTags)
+	return imageWithTags.Tags, err
 }
 
 func unmarshalToken(response *http.Response) (*Token, error) {

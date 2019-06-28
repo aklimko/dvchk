@@ -6,11 +6,11 @@ import (
 )
 
 func TestCheckImagesForNewerVersions(t *testing.T) {
-	var successful []*ImageContext
-	image1, _ := getImageDetails("registry.com/creator/image:0.1.0")
-	successful = append(successful, &ImageContext{Image: image1, Tags: []string{"0.1.0", "0.2.0"}})
-	image2, _ := getImageDetails("creator/image:0.2.0")
-	successful = append(successful, &ImageContext{Image: image2, Tags: []string{"latest", "0.3.0", "0.1.0", "0.2.0", "0.1.1", "1.0.0"}})
+	var successful []*ImageTags
+	image1, _ := getImageDetails("registry.com/author/image:0.1.0")
+	successful = append(successful, &ImageTags{Image: image1, Tags: []string{"0.1.0", "0.2.0"}})
+	image2, _ := getImageDetails("author/image:0.2.0")
+	successful = append(successful, &ImageTags{Image: image2, Tags: []string{"latest", "0.3.0", "0.1.0", "0.2.0", "0.1.1", "1.0.0"}})
 	storage := &ImageStorage{Successful: successful}
 
 	imagesNewerVersions := CheckImagesForNewerVersions(storage)

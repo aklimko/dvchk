@@ -7,12 +7,10 @@ import (
 	"sort"
 )
 
-type ImagesNewerVersions struct {
-	imagesNewerVersions []ImageNewerVersions
-}
+type ImagesNewerVersions []ImageNewerVersions
 
-func (i ImagesNewerVersions) Print() {
-	for _, imageNewerVersions := range i.imagesNewerVersions {
+func (inv ImagesNewerVersions) Print() {
+	for _, imageNewerVersions := range inv {
 		imageNewerVersions.Print()
 	}
 }
@@ -22,11 +20,11 @@ type ImageNewerVersions struct {
 	newerVersions []string
 }
 
-func (i ImageNewerVersions) Print() {
-	if len(i.newerVersions) > 0 {
-		fmt.Printf("There are new versions of %s! Newer versions: %s\n", i.imageName, i.newerVersions)
+func (inv ImageNewerVersions) Print() {
+	if len(inv.newerVersions) > 0 {
+		fmt.Printf("There are new versions of %s! Newer versions: %s\n", inv.imageName, inv.newerVersions)
 	} else {
-		fmt.Printf("%s is up to date\n", i.imageName)
+		fmt.Printf("%s is up to date\n", inv.imageName)
 	}
 }
 
@@ -40,18 +38,18 @@ func ValidateTagIsSemver(tag string) error {
 }
 
 func CheckImagesForNewerVersions(storage *ImageStorage) ImagesNewerVersions {
-	var imagesNewerVersions []ImageNewerVersions
+	var imagesNewerVersions ImagesNewerVersions
 
 	for _, imageTags := range storage.Successful {
 		imageNewerVersions, err := checkImageForNewerVersions(imageTags)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("Failed to check image %s for newer versions, %v\n", imageTags.Image.LocalFullName, err)
 		}
 
 		imagesNewerVersions = append(imagesNewerVersions, imageNewerVersions)
 	}
 
-	return ImagesNewerVersions{imagesNewerVersions}
+	return imagesNewerVersions
 }
 
 func checkImageForNewerVersions(imageTags *ImageTags) (ImageNewerVersions, error) {
@@ -69,15 +67,19 @@ func checkImageForNewerVersions(imageTags *ImageTags) (ImageNewerVersions, error
 
 func createValidVersionsSortedAsc(tags []string) []*version.Version {
 	var versions []*version.Version
+
 	for _, tag := range tags {
 		v, err := version.NewSemver(tag)
 		if err != nil {
 			log.Debugf("Failed to create version from tag: %s\n", tag)
 			continue
 		}
+
 		versions = append(versions, v)
 	}
+
 	sortVersions(versions)
+
 	return versions
 }
 
@@ -91,10 +93,12 @@ func createConstraintGreaterThan(tag string) (version.Constraints, error) {
 
 func getNewerVersions(versions []*version.Version, constraints version.Constraints) []string {
 	var newerVersions []string
+
 	for _, v := range versions {
 		if constraints.Check(v) {
 			newerVersions = append(newerVersions, v.Original())
 		}
 	}
+
 	return newerVersions
 }

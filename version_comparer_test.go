@@ -16,10 +16,8 @@ func TestCheckImagesForNewerVersions(t *testing.T) {
 	imagesNewerVersions := CheckImagesForNewerVersions(storage)
 
 	expected := ImagesNewerVersions{
-		imagesNewerVersions: []ImageNewerVersions{
-			{image1.LocalFullName, []string{"0.2.0"}},
-			{image2.LocalFullName, []string{"0.3.0", "1.0.0"}},
-		},
+		{image1.LocalFullName, []string{"0.2.0"}},
+		{image2.LocalFullName, []string{"0.3.0", "1.0.0"}},
 	}
 	if !reflect.DeepEqual(expected, imagesNewerVersions) {
 		t.Errorf("Should be %v, but is %v", expected, imagesNewerVersions)

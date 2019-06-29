@@ -181,7 +181,7 @@ func (a *Authorizer) authenticateMarkedImages() Status {
 
 	credentials, err := readCredentials()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("Failed to read credentials, %v\n", err)
 		return statusFinish
 	}
 
@@ -275,11 +275,13 @@ func (a *Authorizer) unmarkRow(row int) {
 
 func readCredentials() (Credentials, error) {
 	fmt.Print("Enter username: ")
+
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
+
 	username := scanner.Text()
 	if username == "" {
-		return Credentials{}, nil
+		return Credentials{}, fmt.Errorf("empty username")
 	}
 
 	fmt.Print("Password: ")

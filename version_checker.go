@@ -72,7 +72,7 @@ func main() {
 }
 
 func setupLogging(config Config) {
-	if config.Debug {
+	if config.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
 }

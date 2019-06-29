@@ -67,7 +67,7 @@ func main() {
 
 	authorizer.Authorize()
 
-	imagesNewerVersions := CheckImagesForNewerVersions(storage)
+	imagesNewerVersions := CheckImagesForNewerVersions(storage, config)
 	imagesNewerVersions.Print()
 }
 

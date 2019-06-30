@@ -274,7 +274,7 @@ func (a *Authorizer) unmarkRow(row int) {
 }
 
 func readCredentials() (Credentials, error) {
-	fmt.Print("Enter username: ")
+	fmt.Print("Username: ")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()

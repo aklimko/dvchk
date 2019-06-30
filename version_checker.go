@@ -103,6 +103,8 @@ func (v *VersionChecker) CheckContainersImageTags(containers []types.Container) 
 	for _, container := range containers {
 		v.checkContainerImageTags(container)
 	}
+
+	fmt.Println()
 }
 
 func (v *VersionChecker) checkContainerImageTags(container types.Container) {

@@ -178,7 +178,7 @@ func (td TagDownloader) DownloadWithAuth(image *ImageAuthUrl, credentials Creden
 			return nil, fmt.Errorf("Failed to unmarshal tags for %s, error:%v\n", imageName, err)
 		}
 
-		fmt.Printf("Tags for %s downloaded successfully\n", imageName)
+		fmt.Printf("Successfully downloaded tags for %s\n", imageName)
 		return tags, nil
 	} else {
 		return nil, fmt.Errorf("Failed authentication for %s\n", imageName)

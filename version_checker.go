@@ -91,6 +91,11 @@ func getRunningContainers() []types.Container {
 		os.Exit(1)
 	}
 
+	if len(containers) == 0 {
+		fmt.Println("No running containers")
+		os.Exit(0)
+	}
+
 	return containers
 }
 

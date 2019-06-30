@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
+	"reflect"
 	"sort"
+	"strings"
 )
 
 type ImagesNewerVersions []ImageNewerVersions
@@ -37,11 +39,18 @@ func ValidateTagIsSemver(tag string) error {
 	return err
 }
 
-func CheckImagesForNewerVersions(storage *ImageStorage) ImagesNewerVersions {
+func CheckImagesForNewerVersions(storage *ImageStorage, config Config) ImagesNewerVersions {
 	var imagesNewerVersions ImagesNewerVersions
 
+	var strategyFunc func(imageTags *ImageTags) (ImageNewerVersions, error)
+	if config.All {
+		strategyFunc = checkImageForAllNewerVersions
+	} else {
+		strategyFunc = checkImageForNewerVersions
+	}
+
 	for _, imageTags := range storage.Successful {
-		imageNewerVersions, err := checkImageForNewerVersions(imageTags)
+		imageNewerVersions, err := strategyFunc(imageTags)
 		if err != nil {
 			fmt.Printf("Failed to check image %s for newer versions, %v\n", imageTags.Image.LocalFullName, err)
 		}
@@ -52,10 +61,28 @@ func CheckImagesForNewerVersions(storage *ImageStorage) ImagesNewerVersions {
 	return imagesNewerVersions
 }
 
-func checkImageForNewerVersions(imageTags *ImageTags) (ImageNewerVersions, error) {
+func checkImageForAllNewerVersions(imageTags *ImageTags) (ImageNewerVersions, error) {
 	versions := createValidVersionsSortedAsc(imageTags.Tags)
 
 	constraints, err := createConstraintGreaterThan(imageTags.Image.Tag)
+	if err != nil {
+		return ImageNewerVersions{}, err
+	}
+
+	newerVersions := getNewerVersions(versions, constraints)
+
+	return ImageNewerVersions{imageName: imageTags.Image.LocalFullName, newerVersions: newerVersions}, nil
+}
+
+func checkImageForNewerVersions(imageTags *ImageTags) (ImageNewerVersions, error) {
+	versions := createValidVersionsSortedAsc(imageTags.Tags)
+
+	tag := imageTags.Image.Tag
+
+	tagSegments := len(strings.Split(tag, "."))
+	versions = filterVersions(versions, tagSegments)
+
+	constraints, err := createConstraintGreaterThan(tag)
 	if err != nil {
 		return ImageNewerVersions{}, err
 	}
@@ -85,6 +112,20 @@ func createValidVersionsSortedAsc(tags []string) []*version.Version {
 
 func sortVersions(versions []*version.Version) {
 	sort.Sort(version.Collection(versions))
+}
+
+func filterVersions(versions []*version.Version, tagSegments int) []*version.Version {
+	var filteredVersions []*version.Version
+
+	for _, v := range versions {
+		versionSegments := int(reflect.ValueOf(v).Elem().FieldByName("si").Int())
+
+		if tagSegments >= versionSegments {
+			filteredVersions = append(filteredVersions, v)
+		}
+	}
+
+	return filteredVersions
 }
 
 func createConstraintGreaterThan(tag string) (version.Constraints, error) {

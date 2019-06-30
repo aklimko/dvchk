@@ -10,7 +10,5 @@ docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock aklimko/dvchk
 ```
 
 ## TODO
-* Option to check versions with the same or less semver precision e.g. for image version 1.2,
-which has also versions 1.2.1, 1.3, 1.3.1, 2, 2.1 and 2.1.1, only 1.3, 2 and 2.1 will show up as newer version.
 * Additional authentication image list filtering by registry.
 * Ignore duplicates

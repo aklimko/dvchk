@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -80,12 +81,14 @@ func setupLogging(config Config) {
 func getRunningContainers() []types.Container {
 	cli, err := client.NewEnvClient()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	return containers

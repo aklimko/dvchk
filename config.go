@@ -28,6 +28,7 @@ func ReadConfig() Config {
 }
 
 func setupEnvVars(v *viper.Viper) {
+	v.SetEnvPrefix("DVCHK")
 	v.AutomaticEnv()
 }
 

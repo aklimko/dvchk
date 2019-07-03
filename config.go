@@ -35,7 +35,7 @@ func setupEnvVars(v *viper.Viper) {
 func setupFlags(v *viper.Viper) {
 	pflag.BoolP("all", "a", false, "Print all newer versions")
 	pflag.BoolP("insecure", "k", false, "Disable TLS certificates validation")
-	pflag.IntP("timeout", "t", 5, "Set timeout for http requests in seconds")
+	pflag.IntP("timeout", "t", 5, "Set timeout for HTTP requests in seconds")
 	pflag.BoolP("verbose", "v", false, "Include additional logs")
 
 	pflag.Parse()

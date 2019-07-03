@@ -8,7 +8,7 @@ DVCHK is a tool that checks if there are newer versions of images for your runni
 
 ## Usage
 ```shell
-docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock aklimko/dvchk
+docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock aklimko/dvchk:0.1.0
 ```
 
 ## Configuration
